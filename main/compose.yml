@@ -1,0 +1,73 @@
+services:
+
+  database:
+    image: mariadb:10.6
+    container_name: database
+    restart: always
+    environment:
+      - MYSQL_USER = user
+      - MARIADB_USER = root
+      - MARIADB_PASSWORD=password
+      - MARIADB_ROOT_PASSWORD=password
+      - MARIADB_DATABASE=delivery
+    volumes:
+      - ./mariadb/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - main
+    ports:
+      - 3306:3306
+
+  phpmyadmin:
+    image: phpmyadmin
+    depends_on:
+    - database
+    restart: always
+    ports:
+      - 8085:80
+    environment:
+      - PMA_HOST=mariadb
+    networks:
+      - main
+
+  service_users:
+    build:
+      dockerfile: ./users/Dockerfile
+    container_name: service_users
+    restart: always
+    environment:
+      - DB_ADDR=root:password@tcp(database:3306)/delivery
+      - HOST=0.0.0.0:8080
+    networks:
+      - main
+    ports:
+      - 8080:8080
+
+  service_items:
+    build:
+      dockerfile: ./items/Dockerfile
+    container_name: service_items
+    restart: always
+    environment:
+      - DB_ADDR=root:password@tcp(database:3306)/delivery
+      - PORT=0.0.0.0:8080
+    networks:
+      - main
+    ports:
+      - 8082:8080
+
+  service_deliveries:
+    build:
+      dockerfile: ./deliveries/Dockerfile
+    container_name: service_deliveries
+    environment:
+      - DB_ADDR=root:password@tcp(database:3306)/delivery
+      - HOST=0.0.0.0:8080
+    restart: always
+    networks:
+      - main
+    ports:
+      - 8083:8080
+
+networks:
+  main:
+    driver: bridge
